@@ -23,7 +23,7 @@ let string_of_id id = String.copy id
 
 (* Hash-consing of identifier *)
 module Hident = Hashcons.Make(
-  struct 
+  struct
     type t = string
     type u = string -> string
     let hash_sub hstr id = hstr id
@@ -334,4 +334,3 @@ type inv_rel_key = int (* index in the [rel_context] part of environment
 			  of de Bruijn indice *)
 
 type id_key = inv_rel_key tableKey
-
