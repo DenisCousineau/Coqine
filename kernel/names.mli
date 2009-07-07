@@ -1,184 +1,513 @@
-(************************************************************************)
-(*  v      *   The Coq Proof Assistant  /  The Coq Development Team     *)
-(* <O___,, * CNRS-Ecole Polytechnique-INRIA Futurs-Universite Paris Sud *)
-(*   \VV/  **************************************************************)
-(*    //   *      This file is distributed under the terms of the       *)
-(*         *       GNU Lesser General Public License Version 2.1        *)
-(************************************************************************)
-
-(*i $Id$ i*)
-
-(*s Identifiers *)
-
-type identifier
+type identifier = string
+val id_ord : 'a -> 'a -> int
+val id_of_string : string -> string
+val string_of_id : string -> string
+module Hident :
+  sig
+    type t = string
+    type u = string -> string
+    val f : unit -> u -> t -> t
+  end
+module IdOrdered : sig type t = identifier val compare : 'a -> 'a -> int end
+module Idset :
+  sig
+    type elt = IdOrdered.t
+    type t = Set.Make(IdOrdered).t
+    val empty : t
+    val is_empty : t -> bool
+    val mem : elt -> t -> bool
+    val add : elt -> t -> t
+    val singleton : elt -> t
+    val remove : elt -> t -> t
+    val union : t -> t -> t
+    val inter : t -> t -> t
+    val diff : t -> t -> t
+    val compare : t -> t -> int
+    val equal : t -> t -> bool
+    val subset : t -> t -> bool
+    val iter : (elt -> unit) -> t -> unit
+    val fold : (elt -> 'a -> 'a) -> t -> 'a -> 'a
+    val for_all : (elt -> bool) -> t -> bool
+    val exists : (elt -> bool) -> t -> bool
+    val filter : (elt -> bool) -> t -> t
+    val partition : (elt -> bool) -> t -> t * t
+    val cardinal : t -> int
+    val elements : t -> elt list
+    val min_elt : t -> elt
+    val max_elt : t -> elt
+    val choose : t -> elt
+    val split : elt -> t -> t * bool * t
+  end
+module Idmap :
+  sig
+    type key = IdOrdered.t
+    type 'a t = 'a Map.Make(IdOrdered).t
+    val empty : 'a t
+    val is_empty : 'a t -> bool
+    val add : key -> 'a -> 'a t -> 'a t
+    val find : key -> 'a t -> 'a
+    val remove : key -> 'a t -> 'a t
+    val mem : key -> 'a t -> bool
+    val iter : (key -> 'a -> unit) -> 'a t -> unit
+    val map : ('a -> 'b) -> 'a t -> 'b t
+    val mapi : (key -> 'a -> 'b) -> 'a t -> 'b t
+    val fold : (key -> 'a -> 'b -> 'b) -> 'a t -> 'b -> 'b
+    val compare : ('a -> 'a -> int) -> 'a t -> 'a t -> int
+    val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+  end
+module Idpred :
+  sig
+    type elt = IdOrdered.t
+    type t = Predicate.Make(IdOrdered).t
+    val empty : t
+    val full : t
+    val is_empty : t -> bool
+    val is_full : t -> bool
+    val mem : elt -> t -> bool
+    val singleton : elt -> t
+    val add : elt -> t -> t
+    val remove : elt -> t -> t
+    val union : t -> t -> t
+    val inter : t -> t -> t
+    val diff : t -> t -> t
+    val complement : t -> t
+    val equal : t -> t -> bool
+    val subset : t -> t -> bool
+    val elements : t -> bool * elt list
+  end
 type name = Name of identifier | Anonymous
-(* Parsing and printing of identifiers *)
-val string_of_id : identifier -> string
-val id_of_string : string -> identifier
-
-val id_ord : identifier -> identifier -> int
-
-(* Identifiers sets and maps *)
-module Idset  : Set.S with type elt = identifier
-module Idpred : Predicate.S with type elt = identifier
-module Idmap  : Map.S with type key = identifier
-
-(*s Directory paths = section names paths *)
 type module_ident = identifier
-module ModIdmap : Map.S with type key = module_ident
-
-type dir_path
-
-(* Inner modules idents on top of list (to improve sharing).
-   For instance: A.B.C is ["C";"B";"A"] *)
-val make_dirpath : module_ident list -> dir_path
-val repr_dirpath : dir_path -> module_ident list
-
-val empty_dirpath : dir_path
-
-(* Printing of directory paths as ["coq_root.module.submodule"] *)
-val string_of_dirpath : dir_path -> string
-
-
-(*s Unique identifier to be used as "self" in structures and 
-  signatures - invisible for users *)
-type label 
-type mod_self_id
-
-(* The first argument is a file name - to prevent conflict between 
-   different files *)
-val make_msid : dir_path -> string -> mod_self_id
-val repr_msid : mod_self_id -> int * string * dir_path
-val id_of_msid : mod_self_id -> identifier
-val label_of_msid : mod_self_id -> label
-val refresh_msid : mod_self_id -> mod_self_id
-val debug_string_of_msid : mod_self_id -> string
-val string_of_msid : mod_self_id -> string
-
-(*s Unique names for bound modules *)
-type mod_bound_id
-
-val make_mbid : dir_path -> string -> mod_bound_id
-val repr_mbid : mod_bound_id -> int * string * dir_path
-val id_of_mbid : mod_bound_id -> identifier
-val label_of_mbid : mod_bound_id -> label
-val debug_string_of_mbid : mod_bound_id -> string
-val string_of_mbid : mod_bound_id -> string
-
-(*s Names of structure elements *)
-
-val mk_label : string -> label
-val string_of_label : label -> string
-
-val label_of_id : identifier -> label
-val id_of_label : label -> identifier
-
-module Labset : Set.S with type elt = label
-module Labmap : Map.S with type key = label
-
-(*s The module part of the kernel name *)
+type dir_path = module_ident list
+module ModIdmap :
+  sig
+    type key = IdOrdered.t
+    type 'a t = 'a Map.Make(IdOrdered).t
+    val empty : 'a t
+    val is_empty : 'a t -> bool
+    val add : key -> 'a -> 'a t -> 'a t
+    val find : key -> 'a t -> 'a
+    val remove : key -> 'a t -> 'a t
+    val mem : key -> 'a t -> bool
+    val iter : (key -> 'a -> unit) -> 'a t -> unit
+    val map : ('a -> 'b) -> 'a t -> 'b t
+    val mapi : (key -> 'a -> 'b) -> 'a t -> 'b t
+    val fold : (key -> 'a -> 'b -> 'b) -> 'a t -> 'b -> 'b
+    val compare : ('a -> 'a -> int) -> 'a t -> 'a t -> int
+    val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+  end
+val make_dirpath : 'a -> 'a
+val repr_dirpath : 'a -> 'a
+val empty_dirpath : 'a list
+val string_of_dirpath : string list -> string
+val u_number : int ref
+type uniq_ident = int * string * dir_path
+val make_uid : 'a -> string -> int * string * 'a
+val debug_string_of_uid : int * string * 'a -> string
+val string_of_uid : 'a * string * string list -> string
+module Umap :
+  sig
+    type key = uniq_ident
+    type +'a t
+    val empty : 'a t
+    val is_empty : 'a t -> bool
+    val add : key -> 'a -> 'a t -> 'a t
+    val find : key -> 'a t -> 'a
+    val remove : key -> 'a t -> 'a t
+    val mem : key -> 'a t -> bool
+    val iter : (key -> 'a -> unit) -> 'a t -> unit
+    val map : ('a -> 'b) -> 'a t -> 'b t
+    val mapi : (key -> 'a -> 'b) -> 'a t -> 'b t
+    val fold : (key -> 'a -> 'b -> 'b) -> 'a t -> 'b -> 'b
+    val compare : ('a -> 'a -> int) -> 'a t -> 'a t -> int
+    val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+  end
+type label = string
+type mod_self_id = uniq_ident
+val make_msid : 'a -> string -> int * string * 'a
+val repr_msid : 'a * 'b * 'c -> 'a * 'b * 'c
+val debug_string_of_msid : int * string * 'a -> string
+val refresh_msid : 'a * string * 'b -> int * string * 'b
+val string_of_msid : 'a * string * string list -> string
+val id_of_msid : 'a * 'b * 'c -> 'b
+val label_of_msid : 'a * 'b * 'c -> 'b
+type mod_bound_id = uniq_ident
+val make_mbid : 'a -> string -> int * string * 'a
+val repr_mbid : 'a * 'b * 'c -> 'a * 'b * 'c
+val debug_string_of_mbid : int * string * 'a -> string
+val string_of_mbid : 'a * string * string list -> string
+val id_of_mbid : 'a * 'b * 'c -> 'b
+val label_of_mbid : 'a * 'b * 'c -> 'b
+val mk_label : 'a -> 'a
+val string_of_label : string -> string
+val id_of_label : 'a -> 'a
+val label_of_id : 'a -> 'a
+module Labset :
+  sig
+    type elt = IdOrdered.t
+    type t = Set.Make(IdOrdered).t
+    val empty : t
+    val is_empty : t -> bool
+    val mem : elt -> t -> bool
+    val add : elt -> t -> t
+    val singleton : elt -> t
+    val remove : elt -> t -> t
+    val union : t -> t -> t
+    val inter : t -> t -> t
+    val diff : t -> t -> t
+    val compare : t -> t -> int
+    val equal : t -> t -> bool
+    val subset : t -> t -> bool
+    val iter : (elt -> unit) -> t -> unit
+    val fold : (elt -> 'a -> 'a) -> t -> 'a -> 'a
+    val for_all : (elt -> bool) -> t -> bool
+    val exists : (elt -> bool) -> t -> bool
+    val filter : (elt -> bool) -> t -> t
+    val partition : (elt -> bool) -> t -> t * t
+    val cardinal : t -> int
+    val elements : t -> elt list
+    val min_elt : t -> elt
+    val max_elt : t -> elt
+    val choose : t -> elt
+    val split : elt -> t -> t * bool * t
+  end
+module Labmap :
+  sig
+    type key = IdOrdered.t
+    type 'a t = 'a Map.Make(IdOrdered).t
+    val empty : 'a t
+    val is_empty : 'a t -> bool
+    val add : key -> 'a -> 'a t -> 'a t
+    val find : key -> 'a t -> 'a
+    val remove : key -> 'a t -> 'a t
+    val mem : key -> 'a t -> bool
+    val iter : (key -> 'a -> unit) -> 'a t -> unit
+    val map : ('a -> 'b) -> 'a t -> 'b t
+    val mapi : (key -> 'a -> 'b) -> 'a t -> 'b t
+    val fold : (key -> 'a -> 'b -> 'b) -> 'a t -> 'b -> 'b
+    val compare : ('a -> 'a -> int) -> 'a t -> 'a t -> int
+    val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+  end
 type module_path =
-  | MPfile of dir_path
+    MPfile of dir_path
   | MPbound of mod_bound_id
-  | MPself of mod_self_id 
+  | MPself of mod_self_id
   | MPdot of module_path * label
-(*i  | MPapply of module_path * module_path    in the future (maybe) i*)
-
 val check_bound_mp : module_path -> bool
-
 val string_of_mp : module_path -> string
-
-module MPset : Set.S with type elt = module_path
-module MPmap : Map.S with type key = module_path
-
-(* Name of the toplevel structure *)
-val initial_msid : mod_self_id
-val initial_path : module_path (* [= MPself initial_msid] *)
-
-(* Initial "seed" of the unique identifier generator *)
-val initial_dir : dir_path
-
-(*s The absolute names of objects seen by kernel *)
-
-type kernel_name
-
-(* Constructor and destructor *)
-val make_kn : module_path -> dir_path -> label -> kernel_name
-val repr_kn : kernel_name -> module_path * dir_path * label
-
-val modpath : kernel_name -> module_path
-val label : kernel_name -> label
-
-val string_of_kn : kernel_name -> string
-val pr_kn : kernel_name -> Pp.std_ppcmds
-
-
-module KNset  : Set.S with type elt = kernel_name
-module KNpred : Predicate.S with type elt = kernel_name
-module KNmap  : Map.S with type key = kernel_name
-
-
-(*s Specific paths for declarations *)
-
+val mp_ord : module_path -> module_path -> int
+module MPord :
+  sig
+    type t = module_path
+    val compare : module_path -> module_path -> int
+  end
+module MPset :
+  sig
+    type elt = MPord.t
+    type t = Set.Make(MPord).t
+    val empty : t
+    val is_empty : t -> bool
+    val mem : elt -> t -> bool
+    val add : elt -> t -> t
+    val singleton : elt -> t
+    val remove : elt -> t -> t
+    val union : t -> t -> t
+    val inter : t -> t -> t
+    val diff : t -> t -> t
+    val compare : t -> t -> int
+    val equal : t -> t -> bool
+    val subset : t -> t -> bool
+    val iter : (elt -> unit) -> t -> unit
+    val fold : (elt -> 'a -> 'a) -> t -> 'a -> 'a
+    val for_all : (elt -> bool) -> t -> bool
+    val exists : (elt -> bool) -> t -> bool
+    val filter : (elt -> bool) -> t -> t
+    val partition : (elt -> bool) -> t -> t * t
+    val cardinal : t -> int
+    val elements : t -> elt list
+    val min_elt : t -> elt
+    val max_elt : t -> elt
+    val choose : t -> elt
+    val split : elt -> t -> t * bool * t
+  end
+module MPmap :
+  sig
+    type key = MPord.t
+    type 'a t = 'a Map.Make(MPord).t
+    val empty : 'a t
+    val is_empty : 'a t -> bool
+    val add : key -> 'a -> 'a t -> 'a t
+    val find : key -> 'a t -> 'a
+    val remove : key -> 'a t -> 'a t
+    val mem : key -> 'a t -> bool
+    val iter : (key -> 'a -> unit) -> 'a t -> unit
+    val map : ('a -> 'b) -> 'a t -> 'b t
+    val mapi : (key -> 'a -> 'b) -> 'a t -> 'b t
+    val fold : (key -> 'a -> 'b -> 'b) -> 'a t -> 'b -> 'b
+    val compare : ('a -> 'a -> int) -> 'a t -> 'a t -> int
+    val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+  end
+type kernel_name = module_path * dir_path * label
+val make_kn : 'a -> 'b -> 'c -> 'a * 'b * 'c
+val repr_kn : 'a -> 'a
+val modpath : 'a * 'b * 'c -> 'a
+val label : 'a * 'b * 'c -> 'c
+val string_of_kn : module_path * string list * string -> string
+val pr_kn : module_path * string list * string -> Pp.std_ppcmds
+val kn_ord : module_path * 'a * 'b -> module_path * 'a * 'b -> int
+module KNord :
+  sig
+    type t = kernel_name
+    val compare : module_path * 'a * 'b -> module_path * 'a * 'b -> int
+  end
+module KNmap :
+  sig
+    type key = KNord.t
+    type 'a t = 'a Map.Make(KNord).t
+    val empty : 'a t
+    val is_empty : 'a t -> bool
+    val add : key -> 'a -> 'a t -> 'a t
+    val find : key -> 'a t -> 'a
+    val remove : key -> 'a t -> 'a t
+    val mem : key -> 'a t -> bool
+    val iter : (key -> 'a -> unit) -> 'a t -> unit
+    val map : ('a -> 'b) -> 'a t -> 'b t
+    val mapi : (key -> 'a -> 'b) -> 'a t -> 'b t
+    val fold : (key -> 'a -> 'b -> 'b) -> 'a t -> 'b -> 'b
+    val compare : ('a -> 'a -> int) -> 'a t -> 'a t -> int
+    val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+  end
+module KNpred :
+  sig
+    type elt = KNord.t
+    type t = Predicate.Make(KNord).t
+    val empty : t
+    val full : t
+    val is_empty : t -> bool
+    val is_full : t -> bool
+    val mem : elt -> t -> bool
+    val singleton : elt -> t
+    val add : elt -> t -> t
+    val remove : elt -> t -> t
+    val union : t -> t -> t
+    val inter : t -> t -> t
+    val diff : t -> t -> t
+    val complement : t -> t
+    val equal : t -> t -> bool
+    val subset : t -> t -> bool
+    val elements : t -> bool * elt list
+  end
+module KNset :
+  sig
+    type elt = KNord.t
+    type t = Set.Make(KNord).t
+    val empty : t
+    val is_empty : t -> bool
+    val mem : elt -> t -> bool
+    val add : elt -> t -> t
+    val singleton : elt -> t
+    val remove : elt -> t -> t
+    val union : t -> t -> t
+    val inter : t -> t -> t
+    val diff : t -> t -> t
+    val compare : t -> t -> int
+    val equal : t -> t -> bool
+    val subset : t -> t -> bool
+    val iter : (elt -> unit) -> t -> unit
+    val fold : (elt -> 'a -> 'a) -> t -> 'a -> 'a
+    val for_all : (elt -> bool) -> t -> bool
+    val exists : (elt -> bool) -> t -> bool
+    val filter : (elt -> bool) -> t -> t
+    val partition : (elt -> bool) -> t -> t * t
+    val cardinal : t -> int
+    val elements : t -> elt list
+    val min_elt : t -> elt
+    val max_elt : t -> elt
+    val choose : t -> elt
+    val split : elt -> t -> t * bool * t
+  end
+module Cmap :
+  sig
+    type key = KNord.t
+    type 'a t = 'a Map.Make(KNord).t
+    val empty : 'a t
+    val is_empty : 'a t -> bool
+    val add : key -> 'a -> 'a t -> 'a t
+    val find : key -> 'a t -> 'a
+    val remove : key -> 'a t -> 'a t
+    val mem : key -> 'a t -> bool
+    val iter : (key -> 'a -> unit) -> 'a t -> unit
+    val map : ('a -> 'b) -> 'a t -> 'b t
+    val mapi : (key -> 'a -> 'b) -> 'a t -> 'b t
+    val fold : (key -> 'a -> 'b -> 'b) -> 'a t -> 'b -> 'b
+    val compare : ('a -> 'a -> int) -> 'a t -> 'a t -> int
+    val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+  end
+module Cpred :
+  sig
+    type elt = KNord.t
+    type t = Predicate.Make(KNord).t
+    val empty : t
+    val full : t
+    val is_empty : t -> bool
+    val is_full : t -> bool
+    val mem : elt -> t -> bool
+    val singleton : elt -> t
+    val add : elt -> t -> t
+    val remove : elt -> t -> t
+    val union : t -> t -> t
+    val inter : t -> t -> t
+    val diff : t -> t -> t
+    val complement : t -> t
+    val equal : t -> t -> bool
+    val subset : t -> t -> bool
+    val elements : t -> bool * elt list
+  end
+module Cset :
+  sig
+    type elt = KNord.t
+    type t = Set.Make(KNord).t
+    val empty : t
+    val is_empty : t -> bool
+    val mem : elt -> t -> bool
+    val add : elt -> t -> t
+    val singleton : elt -> t
+    val remove : elt -> t -> t
+    val union : t -> t -> t
+    val inter : t -> t -> t
+    val diff : t -> t -> t
+    val compare : t -> t -> int
+    val equal : t -> t -> bool
+    val subset : t -> t -> bool
+    val iter : (elt -> unit) -> t -> unit
+    val fold : (elt -> 'a -> 'a) -> t -> 'a -> 'a
+    val for_all : (elt -> bool) -> t -> bool
+    val exists : (elt -> bool) -> t -> bool
+    val filter : (elt -> bool) -> t -> t
+    val partition : (elt -> bool) -> t -> t * t
+    val cardinal : t -> int
+    val elements : t -> elt list
+    val min_elt : t -> elt
+    val max_elt : t -> elt
+    val choose : t -> elt
+    val split : elt -> t -> t * bool * t
+  end
+val default_module_name : string
+val initial_dir : string list
+val initial_msid : int * string * string list
+val initial_path : module_path
 type variable = identifier
-type constant
+type constant = kernel_name
 type mutual_inductive = kernel_name
-(* Beware: first inductive has index 0 *)
 type inductive = mutual_inductive * int
-(* Beware: first constructor has index 1 *)
 type constructor = inductive * int
-
-module Cmap  : Map.S with type key = constant
-module Cpred  : Predicate.S with type elt = constant
-module Cset  : Set.S with type elt = constant
-module Indmap : Map.S with type key = inductive
-module Constrmap : Map.S with type key = constructor
-
-val constant_of_kn : kernel_name -> constant
-val make_con : module_path -> dir_path -> label -> constant
-val repr_con : constant -> module_path * dir_path * label
-val string_of_con : constant -> string
-val con_label : constant -> label
-val con_modpath : constant -> module_path
-val pr_con : constant -> Pp.std_ppcmds
-
-val mind_modpath : mutual_inductive -> module_path
-val ind_modpath : inductive -> module_path
-val constr_modpath : constructor -> module_path
-
-val ith_mutual_inductive : inductive -> int -> inductive
-val ith_constructor_of_inductive : inductive -> int -> constructor
-val inductive_of_constructor : constructor -> inductive
-val index_of_constructor : constructor -> int
-
-(* Better to have it here that in Closure, since required in grammar.cma *)
+val constant_of_kn : 'a -> 'a
+val make_con : 'a -> 'b -> 'c -> 'a * 'b * 'c
+val repr_con : 'a -> 'a
+val string_of_con : module_path * string list * string -> string
+val con_label : 'a * 'b * 'c -> 'c
+val pr_con : module_path * string list * string -> Pp.std_ppcmds
+val con_modpath : 'a * 'b * 'c -> 'a
+val mind_modpath : 'a * 'b * 'c -> 'a
+val ind_modpath : ('a * 'b * 'c) * 'd -> 'a
+val constr_modpath : (('a * 'b * 'c) * 'd) * 'e -> 'a
+val ith_mutual_inductive : 'a * 'b -> 'c -> 'a * 'c
+val ith_constructor_of_inductive : 'a -> 'b -> 'a * 'b
+val inductive_of_constructor : 'a * 'b -> 'a
+val index_of_constructor : 'a * 'b -> 'b
+module InductiveOrdered :
+  sig
+    type t = inductive
+    val compare :
+      (module_path * 'a * 'b) * int -> (module_path * 'a * 'b) * int -> int
+  end
+module Indmap :
+  sig
+    type key = InductiveOrdered.t
+    type 'a t = 'a Map.Make(InductiveOrdered).t
+    val empty : 'a t
+    val is_empty : 'a t -> bool
+    val add : key -> 'a -> 'a t -> 'a t
+    val find : key -> 'a t -> 'a
+    val remove : key -> 'a t -> 'a t
+    val mem : key -> 'a t -> bool
+    val iter : (key -> 'a -> unit) -> 'a t -> unit
+    val map : ('a -> 'b) -> 'a t -> 'b t
+    val mapi : (key -> 'a -> 'b) -> 'a t -> 'b t
+    val fold : (key -> 'a -> 'b -> 'b) -> 'a t -> 'b -> 'b
+    val compare : ('a -> 'a -> int) -> 'a t -> 'a t -> int
+    val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+  end
+module ConstructorOrdered :
+  sig
+    type t = constructor
+    val compare :
+      ((module_path * 'a * 'b) * int) * int ->
+      ((module_path * 'a * 'b) * int) * int -> int
+  end
+module Constrmap :
+  sig
+    type key = ConstructorOrdered.t
+    type 'a t = 'a Map.Make(ConstructorOrdered).t
+    val empty : 'a t
+    val is_empty : 'a t -> bool
+    val add : key -> 'a -> 'a t -> 'a t
+    val find : key -> 'a t -> 'a
+    val remove : key -> 'a t -> 'a t
+    val mem : key -> 'a t -> bool
+    val iter : (key -> 'a -> unit) -> 'a t -> unit
+    val map : ('a -> 'b) -> 'a t -> 'b t
+    val mapi : (key -> 'a -> 'b) -> 'a t -> 'b t
+    val fold : (key -> 'a -> 'b -> 'b) -> 'a t -> 'b -> 'b
+    val compare : ('a -> 'a -> int) -> 'a t -> 'a t -> int
+    val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+  end
 type evaluable_global_reference =
-  | EvalVarRef of identifier
+    EvalVarRef of identifier
   | EvalConstRef of constant
-
-(* Hash-consing *)
-val hcons_names : unit ->
-  (constant -> constant) *
-  (kernel_name -> kernel_name) * (dir_path -> dir_path) *
-  (name -> name) * (identifier -> identifier) * (string -> string)
-
-
-(******)
-
-type 'a tableKey =
-  | ConstKey of constant
-  | VarKey of identifier
-  | RelKey of 'a 
-
+module Hname :
+  sig
+    type t = name
+    type u = identifier -> identifier
+    val f : unit -> u -> t -> t
+  end
+module Hdir :
+  sig
+    type t = dir_path
+    type u = identifier -> identifier
+    val f : unit -> u -> t -> t
+  end
+module Huniqid :
+  sig
+    type t = uniq_ident
+    type u = (string -> string) * (dir_path -> dir_path)
+    val f : unit -> u -> t -> t
+  end
+module Hmod :
+  sig
+    type t = module_path
+    type u =
+        (dir_path -> dir_path) * (uniq_ident -> uniq_ident) *
+        (string -> string)
+    val f : unit -> u -> t -> t
+  end
+module Hkn :
+  sig
+    type t = kernel_name
+    type u =
+        (module_path -> module_path) * (dir_path -> dir_path) *
+        (string -> string)
+    val f : unit -> u -> t -> t
+  end
+val hcons_names :
+  unit ->
+  (Hkn.t -> Hkn.t) * (Hkn.t -> Hkn.t) * (Hdir.t -> Hdir.t) *
+  (Hname.t -> Hname.t) * (Hident.t -> Hident.t) *
+  (Hashcons.Hstring.t -> Hashcons.Hstring.t)
 type transparent_state = Idpred.t * Cpred.t
-
-val empty_transparent_state : transparent_state
-val full_transparent_state : transparent_state
-val var_full_transparent_state : transparent_state
-val cst_full_transparent_state : transparent_state
-
-type inv_rel_key = int (* index in the [rel_context] part of environment
-			  starting by the end, {\em inverse} 
-			  of de Bruijn indice *)
-
+val empty_transparent_state : Idpred.t * Cpred.t
+val full_transparent_state : Idpred.t * Cpred.t
+val var_full_transparent_state : Idpred.t * Cpred.t
+val cst_full_transparent_state : Idpred.t * Cpred.t
+type 'a tableKey = ConstKey of constant | VarKey of identifier | RelKey of 'a
+type inv_rel_key = int
 type id_key = inv_rel_key tableKey

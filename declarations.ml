@@ -672,7 +672,7 @@ let rec subst_with_body sub = function
       With_module_body(id,subst_mp sub mp,
 		       Option.smartmap (subst_struct_expr sub) typ_opt,cst)
   | With_definition_body(id,cb) ->
-      With_definition_body( id,subst_constbody sub cb)
+      With_definition_body( id,subst_const_body sub cb)
 
 and subst_modtype sub mtb =
   let typ_expr' = subst_struct_expr sub mtb.typ_expr in

@@ -61,7 +61,9 @@ let which_dotpi r = match r with
   | _ -> raise NotASort
 *)
 
-let get_dotpi e t1 t2 = which_dotpi (infer_type e t1, infer_type e t2)
+let get_dotpi e n t1 t2 =
+  let e1 =  push_rel (n,None,t1) e in
+    which_dotpi (infer_type e t1, infer_type e1 t2)
 
 let which_e s = match s with
   | Prop Pos  -> "eset"
@@ -71,12 +73,12 @@ let which_e s = match s with
 let get_e e t = which_e (infer_type e t)
 
 let name_to_string n = match n with
-  | Anonymous -> raise AnonymousCoqVar
+  | Anonymous -> "_"
   | Name s -> s
 
 
 let get_identifier n = match n with
-  | Anonymous -> raise AnonymousCoqVar
+  | Anonymous -> "_"
   | Name s -> s
 
 let name_to_qid n = Id (string_of_id (get_identifier n))
@@ -85,9 +87,12 @@ let name_to_qid n = Id (string_of_id (get_identifier n))
 (*** as a term ***)
 
 let rec term_trans_aux e i t = match t with
-  | Rel _ -> raise NotImplementedYet
+  | Rel n -> EVar (Id (try List.nth i (n-1)
+		       with Failure("nth") -> 
+			 failwith (Printf.sprintf "var %d of %d" n (List.length i))
+))
 
-  | Var _  -> raise NotImplementedYet
+  | Var v  -> EVar(Id v)
 
   | Meta _ -> raise ShouldNotAppear
 
@@ -100,21 +105,23 @@ let rec term_trans_aux e i t = match t with
 
   | Cast (_,_,_)  -> raise NotImplementedYet
 
-  | Prod (n,t1,t2)  -> let t_tt1 = term_trans_aux e i t1 and e1 = push_named ((name_to_string n),None,t1) e in
-                              EApp ((EApp (EVar(Qid("Coq1univ",get_dotpi e t1 t2)), t_tt1)),
+  | Prod (n,t1,t2)  -> let t_tt1 = term_trans_aux e i t1 and e1 = push_rel (n,None,t1) e in
+                              EApp ((EApp (EVar(Qid("Coq1univ",get_dotpi e n t1 t2)), t_tt1)),
                                  (EFun ((name_to_qid n),
                                         (EApp(EVar(Qid ("Coq1univ",get_e e t1)),t_tt1)),
-                                        (term_trans_aux e1 i t2))))
+                                        (term_trans_aux e1 ((name_to_string n)::i) t2))))
 
   | Lambda (n,t1,t2)  ->  (EFun ((Id (string_of_id (name_to_string n))),
                                         (EApp(EVar(Qid ("Coq1univ",get_e e t1)),term_trans_aux e i t1)),
-                                        (term_trans_aux (push_named ((name_to_string n),None,t1) e) i t2)))
+                                        (term_trans_aux (push_rel (n,None,t1) e) ((name_to_string n)::i) t2)))
 
   | LetIn (_,_,_,_)  -> raise NotImplementedYet
 
-  | App (t1,a)  -> Array.fold_left (fun u1 u2 -> EApp(u1,u2)) (term_trans_aux e i t1) (Array.map (fun u -> term_trans_aux e i u) a)
+  | App (t1,a)  -> Array.fold_left (fun u1 u2 -> EApp(u1,term_trans_aux e i u2))
+      (term_trans_aux e i t1) a
 
-  | Const _  -> raise NotImplementedYet
+  | Const(mp,dp,l)  -> (* TODO: treat the module path and the dir path *)
+      EVar(Id l)
 
   | Ind _  -> raise NotImplementedYet
 
@@ -128,7 +135,7 @@ let rec term_trans_aux e i t = match t with
 
 
 
-let term_trans t = term_trans_aux empty_env 0 t
+let term_trans t = term_trans_aux empty_env [] t
 
 (*** as a type ***)
 
@@ -138,12 +145,13 @@ let rec type_trans_aux e i t = match t with
                    | Prop Null -> EVar(Qid("Coq1univ.eu","Uprop"))
                    | Type _    -> EVar(Qid("Coq1univ.eu","Utype")))
 
-  | Prod(n,t1,t2) -> EPi((name_to_qid n),(type_trans_aux e i t1),(type_trans_aux e i t2))
+  | Prod(n,t1,t2) ->  let t_tt1 = type_trans_aux e i t1 and e1 = push_rel (n,None,t1) e in
+      EPi((name_to_qid n),t_tt1,(type_trans_aux e1 ((name_to_string n)::i) t2))
 
   | t -> EApp(EVar(Qid("Coq1univ.eu",get_e e t)),(term_trans_aux e i t))
 
 
-let type_trans t = type_trans_aux empty_env 0 t
+let type_trans t = type_trans_aux empty_env [] t
 
 
 
@@ -215,6 +223,27 @@ let rec ast_to_str t = match t with
   | EApp (t1,t2) -> " (" ^ (ast_to_str t1) ^ " " ^ (ast_to_str t2) ^ ") "
 
 let pprint expres = Printf.printf "%s" (ast_to_str expres)
+
+let output_term out_chan t = output_string out_chan (ast_to_str t)
+  
+let output_decl out_chan (i,t) = 
+  output_string out_chan (get_euname i);
+  output_string out_chan " : ";
+  output_term out_chan t
+
+let output_line out_chan = function
+  | Declaration(i,t) -> output_decl out_chan (i,t);
+      output_string out_chan "\n"
+  | Rule(var_decls, t1, t2) -> 
+      output_string out_chan "[";
+      List.iter (output_decl out_chan) var_decls;
+      output_string out_chan "] ";
+      output_term out_chan t1;
+      output_string out_chan " --> ";
+      output_term out_chan t2;
+      output_string out_chan "\n"
+  | End -> output_string out_chan "\n"
+
 
 
 
