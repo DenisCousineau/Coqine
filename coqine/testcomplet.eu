@@ -50,3 +50,11 @@ dotpitt : x : Utype -> y : (etype x -> Utype) -> Utype.
 
 [] (etype dotset)  --> Uset.
 [] (etype dotprop) --> Uprop.
+simple :  (P : Uprop ->  (_ :  (eprop P)  ->  (eprop P) ) ) .
+[] simple -->  (P :  (etype dotprop)  =>  (H :  (eprop P)  => H) ) .
+K :  (P : Uprop ->  (Q : Uprop ->  (_ :  (eprop P)  ->  (_ :  (eprop Q)  ->  (eprop P) ) ) ) ) .
+[] K -->  (P :  (etype dotprop)  =>  (Q :  (etype dotprop)  =>  (H :  (eprop P)  =>  (H0 :  (eprop Q)  =>  ( (simple P)  H) ) ) ) ) .
+S :  (P : Uprop ->  (Q : Uprop ->  (R : Uprop ->  (_ :  (_ :  (eprop P)  ->  (_ :  (eprop Q)  ->  (eprop R) ) )  ->  (_ :  (_ :  (eprop P)  ->  (eprop Q) )  ->  (_ :  (eprop P)  ->  (eprop R) ) ) ) ) ) ) .
+[] S -->  (P :  (etype dotprop)  =>  (Q :  (etype dotprop)  =>  (R :  (etype dotprop)  =>  (H :  (eprop  ( (dotpipp P)   (_ :  (eprop P)  =>  ( (dotpipp Q)   (_ :  (eprop Q)  => R) ) ) ) )  =>  (H0 :  (eprop  ( (dotpipp P)   (_ :  (eprop P)  => Q) ) )  =>  (H1 :  (eprop P)  =>  ( (H H1)   (H0 H1) ) ) ) ) ) ) ) .
+I :  (P : Uprop ->  (_ :  (eprop P)  ->  (eprop P) ) ) .
+[] I -->  (P :  (etype dotprop)  =>  ( ( ( ( (S P)   ( (dotpipp P)   (_ :  (eprop P)  => P) ) )  P)   ( (K P)   ( (dotpipp P)   (_ :  (eprop P)  => P) ) ) )   ( (K P)  P) ) ) .

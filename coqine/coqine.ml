@@ -88,7 +88,7 @@ let name_to_qid n = Id (string_of_id (get_identifier n))
 
 let rec term_trans_aux e i t = match t with
   | Rel n -> EVar (Id (try List.nth i (n-1)
-		       with Failure("nth") -> 
+		       with Failure("nth") ->
 			 failwith (Printf.sprintf "var %d of %d" n (List.length i))
 ))
 
@@ -218,30 +218,30 @@ let rec ast_to_str t = match t with
   | EType -> " Type "
   | EKind -> " Kind "
   | EVar n -> get_euname n
-  | EPi (n,t1,t2) -> (get_euname n) ^ " : " ^ (ast_to_str t1) ^ " -> " ^ (ast_to_str t2)
+  | EPi (n,t1,t2) -> " (" ^ (get_euname n) ^ " : " ^ (ast_to_str t1) ^ " -> " ^ (ast_to_str t2) ^ ") "
   | EFun (n,t1,t2) -> " (" ^ (get_euname n) ^ " : " ^ (ast_to_str t1) ^ " => " ^ (ast_to_str t2) ^ ") "
   | EApp (t1,t2) -> " (" ^ (ast_to_str t1) ^ " " ^ (ast_to_str t2) ^ ") "
 
 let pprint expres = Printf.printf "%s" (ast_to_str expres)
 
 let output_term out_chan t = output_string out_chan (ast_to_str t)
-  
-let output_decl out_chan (i,t) = 
+
+let output_decl out_chan (i,t) =
   output_string out_chan (get_euname i);
   output_string out_chan " : ";
   output_term out_chan t
 
 let output_line out_chan = function
   | Declaration(i,t) -> output_decl out_chan (i,t);
-      output_string out_chan "\n"
-  | Rule(var_decls, t1, t2) -> 
+      output_string out_chan ".\n"
+  | Rule(var_decls, t1, t2) ->
       output_string out_chan "[";
       List.iter (output_decl out_chan) var_decls;
       output_string out_chan "] ";
       output_term out_chan t1;
       output_string out_chan " --> ";
       output_term out_chan t2;
-      output_string out_chan "\n"
+      output_string out_chan ".\n"
   | End -> output_string out_chan "\n"
 
 
